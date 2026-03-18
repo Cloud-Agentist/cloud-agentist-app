@@ -10,7 +10,6 @@ const ACTOR_REGISTRY = process.env.ACTOR_REGISTRY_URL ?? "http://localhost:3002"
 const APPROVAL_SERVICE = process.env.APPROVAL_SERVICE_URL ?? "http://localhost:3006";
 const MEMORY_FABRIC = process.env.MEMORY_FABRIC_URL ?? "http://localhost:3007";
 const EVENT_STORE = process.env.EVENT_STORE_URL ?? "http://localhost:3003";
-const COGNITION_GATEWAY = process.env.COGNITION_GATEWAY_URL ?? "http://localhost:3000";
 
 // ── Actor registry ────────────────────────────────────────────────────────────
 
@@ -82,6 +81,17 @@ export async function listPendingApprovals(actorId: string): Promise<ApprovalReq
   return data.approvals ?? [];
 }
 
+export async function listRecentApprovals(actorId: string, limit = 10): Promise<ApprovalRequest[]> {
+  try {
+    const res = await fetch(
+      `${APPROVAL_SERVICE}/approvals?actorId=${encodeURIComponent(actorId)}&limit=${limit}`,
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { approvals?: ApprovalRequest[] };
+    return (data.approvals ?? []).filter((a) => a.status !== "pending");
+  } catch { return []; }
+}
+
 export async function decideApproval(
   approvalId: string,
   decision: "approved" | "denied",
@@ -137,7 +147,180 @@ export async function listEvents(actorId: string, limit = 30): Promise<ActorEven
   return data.events ?? [];
 }
 
-// ── Cognition gateway ─────────────────────────────────────────────────────────
+// ── Intent orchestration (for inbox) ─────────────────────────────────────────
+
+const INTENT_ORCHESTRATION = process.env.INTENT_ORCHESTRATION_URL ?? "http://localhost:3013";
+
+export interface ActorIntent {
+  intentId: string;
+  actorId: string;
+  action: string;
+  rationale?: string;
+  status: "pending" | "dispatched" | "completed" | "cancelled";
+  createdAt: string;
+}
+
+export async function listPendingIntents(actorId: string, limit = 20): Promise<ActorIntent[]> {
+  try {
+    const res = await fetch(
+      `${INTENT_ORCHESTRATION}/intents?actorId=${encodeURIComponent(actorId)}&status=pending&limit=${limit}`,
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { intents?: ActorIntent[] };
+    return data.intents ?? [];
+  } catch { return []; }
+}
+
+// ── Financial summary (for dashboard) ────────────────────────────────────────
+
+const DOMAIN_FINANCE = process.env.DOMAIN_FINANCE_URL ?? "http://localhost:3024";
+
+export interface FinancialAccount {
+  account_id: string;
+  name: string;
+  currency: string;
+  account_type: string;
+}
+
+export interface SpendingSummary {
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  breakdown: Array<{ category: string; entry_type: string; total: string; count: string }>;
+}
+
+export async function listFinancialAccounts(actorId: string): Promise<FinancialAccount[]> {
+  try {
+    const res = await fetch(
+      `${DOMAIN_FINANCE}/accounts?actorId=${encodeURIComponent(actorId)}`,
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { accounts?: FinancialAccount[] };
+    return data.accounts ?? [];
+  } catch { return []; }
+}
+
+export async function getSpendingSummary(accountId: string): Promise<SpendingSummary | null> {
+  try {
+    const res = await fetch(`${DOMAIN_FINANCE}/accounts/${accountId}/summary`);
+    if (!res.ok) return null;
+    return res.json() as Promise<SpendingSummary>;
+  } catch { return null; }
+}
+
+// ── Capability registry ──────────────────────────────────────────────────────
+
+const CAPABILITY_REGISTRY = process.env.CAPABILITY_REGISTRY_URL ?? "http://localhost:3010";
+
+export interface Capability {
+  action: string;
+  displayName?: string;
+  description?: string;
+  sensitivityLevel: string;
+  providerName: string;
+}
+
+export async function listCapabilities(): Promise<Capability[]> {
+  try {
+    const res = await fetch(`${CAPABILITY_REGISTRY}/capabilities`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { capabilities?: Capability[] };
+    return data.capabilities ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Actor interaction (governed flow via Temporal) ───────────────────────────
+
+const ACTOR_RUNTIME = process.env.ACTOR_RUNTIME_URL ?? "http://localhost:3004";
+
+export interface InteractionResult {
+  text: string;
+  eventId: string;
+  workflowId?: string;
+  proposedIntents?: unknown[];
+}
+
+/**
+ * Send a message through the full governed actor interaction flow.
+ *
+ * Flow: actor-runtime → Temporal workflow → cognition-gateway → provider
+ *       → per-intent authority evaluation → approval if needed → action-bus dispatch
+ *
+ * This is the PRIMARY interaction path. For quick queries where governance
+ * overhead is not needed, use reasonDirect().
+ */
+export async function interact(
+  actorId: string,
+  input: string,
+  sessionId?: string,
+): Promise<InteractionResult> {
+  const res = await fetch(`${ACTOR_RUNTIME}/actors/${encodeURIComponent(actorId)}/interact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ input, sessionId }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    // Fall back to direct gateway call if actor-runtime or Temporal is unavailable
+    if (res.status === 502 || res.status === 503 || res.status >= 500) {
+      return reasonDirect(actorId, input, sessionId);
+    }
+    throw new Error(`Actor runtime error ${res.status}: ${body}`);
+  }
+
+  const data = (await res.json()) as {
+    result?: { text?: string; eventId?: string };
+    workflowId?: string;
+  };
+
+  return {
+    text: data.result?.text ?? "",
+    eventId: data.result?.eventId ?? "",
+    workflowId: data.workflowId,
+  };
+}
+
+/**
+ * Start an async interaction that may require approval.
+ * Returns a workflowId for polling.
+ */
+export async function interactAsync(
+  actorId: string,
+  input: string,
+  sessionId?: string,
+): Promise<{ workflowId: string }> {
+  const res = await fetch(
+    `${ACTOR_RUNTIME}/actors/${encodeURIComponent(actorId)}/interact/async`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ input, sessionId }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Actor runtime error ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<{ workflowId: string }>;
+}
+
+/**
+ * Poll a workflow for completion.
+ */
+export async function getWorkflowStatus(
+  workflowId: string,
+): Promise<{ status: string; result?: { text?: string; eventId?: string } }> {
+  const res = await fetch(`${ACTOR_RUNTIME}/workflows/${encodeURIComponent(workflowId)}`);
+  if (!res.ok) throw new Error(`Workflow poll error ${res.status}`);
+  return res.json() as Promise<{ status: string; result?: { text?: string; eventId?: string } }>;
+}
+
+// ── Direct gateway call (fallback, bypasses governance) ──────────────────────
+
+const COGNITION_GATEWAY = process.env.COGNITION_GATEWAY_URL ?? "http://localhost:3000";
 
 export interface ReasoningResult {
   text: string;
@@ -146,11 +329,15 @@ export interface ReasoningResult {
   providerMetadata?: Record<string, unknown>;
 }
 
-export async function reason(
+/**
+ * Direct call to cognition-gateway, bypassing Temporal governance.
+ * Used as fallback when actor-runtime is unavailable.
+ */
+export async function reasonDirect(
   actorId: string,
   input: string,
   sessionId?: string,
-): Promise<ReasoningResult> {
+): Promise<InteractionResult> {
   const res = await fetch(`${COGNITION_GATEWAY}/v1/reasoning`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -160,5 +347,10 @@ export async function reason(
     const body = await res.text().catch(() => "");
     throw new Error(`Gateway error ${res.status}: ${body}`);
   }
-  return res.json() as Promise<ReasoningResult>;
+  const data = (await res.json()) as ReasoningResult;
+  return {
+    text: data.text,
+    eventId: "",
+    proposedIntents: data.proposedIntents,
+  };
 }

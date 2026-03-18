@@ -1,0 +1,62 @@
+{
+  "timestamp": "2026-03-18T18:11:50.074Z",
+  "summary": {
+    "total": 6,
+    "critical": 0,
+    "high": 0,
+    "medium": 3,
+    "low": 3
+  },
+  "pageLoadTimes": [
+    {
+      "page": "/",
+      "ms": 115
+    },
+    {
+      "page": "/capabilities",
+      "ms": 173
+    }
+  ],
+  "consoleErrors": 0,
+  "networkErrors": 0,
+  "findings": [
+    {
+      "page": "/capabilities",
+      "persona": "End User",
+      "severity": "medium",
+      "finding": "Action IDs shown without human-readable labels"
+    },
+    {
+      "page": "auth",
+      "persona": "Security",
+      "severity": "medium",
+      "finding": "Auth flow may not be using PKCE (no code_challenge in URL)"
+    },
+    {
+      "page": "auth",
+      "persona": "Compliance",
+      "severity": "medium",
+      "finding": "Auth0 login page has no privacy/terms links"
+    },
+    {
+      "page": "/",
+      "persona": "PO",
+      "severity": "low",
+      "finding": "No Open Graph image — poor social sharing appearance"
+    },
+    {
+      "page": "/capabilities",
+      "persona": "Security",
+      "severity": "low",
+      "finding": "Capabilities page accessible without auth — exposes system capabilities to unauthenticated users"
+    },
+    {
+      "page": "nav",
+      "persona": "PO",
+      "severity": "low",
+      "finding": "Memories page not discoverable from main nav"
+    }
+  ],
+  "consoleErrorDetails": [],
+  "networkErrorDetails": []
+}

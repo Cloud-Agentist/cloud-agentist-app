@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Auth0Provider } from "@auth0/nextjs-auth0";
+import { ToastProvider } from "@/lib/toast";
+import { KeyboardShortcuts } from "@/lib/keyboard";
+import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +17,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LifeLift",
-  description: "Your persistent AI life assistant",
+  title: "LifeLift — Your AI that acts",
+  description: "Manage your schedule, wishlists, and finances through conversation.",
+  openGraph: {
+    title: "LifeLift — Your AI that acts",
+    description: "Manage your schedule, wishlists, and finances through conversation.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -26,7 +34,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Auth0Provider>{children}</Auth0Provider>
+        <Auth0Provider>
+          <ToastProvider>
+            <KeyboardShortcuts />
+            {children}
+            <CookieBanner />
+          </ToastProvider>
+        </Auth0Provider>
       </body>
     </html>
   );

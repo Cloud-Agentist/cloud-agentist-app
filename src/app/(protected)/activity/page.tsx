@@ -78,7 +78,7 @@ function EventCard({ event }: { event: ActorEvent }) {
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-mono text-indigo-400">{event.event_type}</span>
         <span className="text-xs text-slate-500">
-          {new Date(event.created_at).toLocaleString()}
+          {safeDate(event.created_at)}
         </span>
       </div>
       {event.payload && Object.keys(event.payload).length > 0 && (
@@ -106,6 +106,13 @@ function MemoryCard({ memory }: { memory: Memory }) {
       </p>
     </div>
   );
+}
+
+function safeDate(dateStr: string | undefined | null): string {
+  if (!dateStr) return "just now";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "just now";
+  return d.toLocaleString();
 }
 
 function summaryFromPayload(payload: Record<string, unknown>): string {
