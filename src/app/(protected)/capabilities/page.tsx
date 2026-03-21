@@ -1,9 +1,13 @@
 import { redirect } from "next/navigation";
+import { auth0 } from "@/lib/auth0";
 import { listCapabilities } from "@/lib/platform";
 import { getActionMeta, sensitivityToColor } from "@/lib/actions";
 import Link from "next/link";
 
 export default async function CapabilitiesPage() {
+  const session = await auth0.getSession();
+  if (!session?.user) redirect("/auth/login?returnTo=" + encodeURIComponent("/capabilities"));
+
   const capabilities = await listCapabilities();
 
   return (

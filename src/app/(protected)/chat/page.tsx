@@ -22,7 +22,7 @@ export default async function ChatPage() {
   const history = await loadChatHistory(actorId, 20);
 
   return (
-    <div className="h-[calc(100vh-53px)] flex flex-col">
+    <div className="h-[calc(100dvh-53px)] flex flex-col">
       <ChatShell
         actorId={actorId}
         userName={(session.user.name ?? session.user.email ?? "You") as string}

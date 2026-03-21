@@ -46,10 +46,20 @@ export async function ensureActor(auth0Sub: string, displayName: string): Promis
       externalId: auth0Sub,
     }),
   });
-  if (!createRes.ok) {
-    throw new Error(`Failed to create actor: ${createRes.status}`);
+  if (createRes.ok) {
+    return createRes.json() as Promise<Actor>;
   }
-  return createRes.json() as Promise<Actor>;
+
+  // Race condition: another request created the actor between our lookup and create.
+  // Re-fetch by external_id.
+  const retryRes = await fetch(`${ACTOR_REGISTRY}/actors?externalId=${encodeURIComponent(auth0Sub)}`);
+  if (retryRes.ok) {
+    const retryData = (await retryRes.json()) as { actors?: Actor[] };
+    if (retryData.actors && retryData.actors.length > 0) {
+      return retryData.actors[0];
+    }
+  }
+  throw new Error(`Failed to create actor: ${createRes.status}`);
 }
 
 export async function getActor(actorId: string): Promise<Actor | null> {
