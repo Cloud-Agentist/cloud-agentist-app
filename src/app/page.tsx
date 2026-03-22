@@ -40,13 +40,13 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
           <Link
             href="/auth/login?returnTo=/dashboard"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-lg transition-colors shadow-lg shadow-indigo-600/20"
+            className="inline-flex items-center justify-center px-8 py-3 min-h-[44px] rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-lg transition-colors shadow-lg shadow-indigo-600/20"
           >
             Get started
           </Link>
           <Link
             href="/auth/login?returnTo=/dashboard"
-            className="inline-flex items-center justify-center px-8 py-3 rounded-lg border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-medium text-lg transition-colors"
+            className="inline-flex items-center justify-center px-8 py-3 min-h-[44px] rounded-lg border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-white font-medium text-lg transition-colors"
           >
             Sign in
           </Link>

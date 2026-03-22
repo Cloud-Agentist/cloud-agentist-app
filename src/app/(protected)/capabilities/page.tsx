@@ -61,7 +61,7 @@ export default async function CapabilitiesPage() {
                   <span className="text-[10px] text-slate-600 font-mono">{cap.action}</span>
                   {prompt && (
                     <Link
-                      href={`/chat`}
+                      href={`/chat?prompt=${encodeURIComponent(prompt)}`}
                       className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
                     >
                       Try it →

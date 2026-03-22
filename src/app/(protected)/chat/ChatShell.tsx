@@ -19,6 +19,7 @@ interface ChatShellProps {
   actorId: string;
   userName: string;
   initialHistory?: Array<{ role: "user" | "assistant"; content: string; timestamp: string }>;
+  initialPrompt?: string;
 }
 
 // ── Suggestion chips ─────────────────────────────────────────────────────────
@@ -195,7 +196,7 @@ function TypingIndicator() {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export default function ChatShell({ actorId, userName, initialHistory = [] }: ChatShellProps) {
+export default function ChatShell({ actorId, userName, initialHistory = [], initialPrompt }: ChatShellProps) {
   const greeting: Message = {
     role: "assistant",
     content: initialHistory.length > 0
@@ -212,7 +213,7 @@ export default function ChatShell({ actorId, userName, initialHistory = [] }: Ch
       timestamp: h.timestamp,
     })),
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialPrompt ?? "");
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [isPending, startTransition] = useTransition();

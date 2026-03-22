@@ -4,7 +4,8 @@ import { ensureActor } from "@/lib/platform";
 import { loadChatHistory } from "./actions";
 import ChatShell from "./ChatShell";
 
-export default async function ChatPage() {
+export default async function ChatPage({ searchParams }: { searchParams: Promise<{ prompt?: string }> }) {
+  const { prompt: initialPrompt } = await searchParams;
   const session = await auth0.getSession();
   if (!session?.user) redirect("/auth/login?returnTo=/chat");
 
@@ -27,6 +28,7 @@ export default async function ChatPage() {
         actorId={actorId}
         userName={(session.user.name ?? session.user.email ?? "You") as string}
         initialHistory={history}
+        initialPrompt={initialPrompt}
       />
     </div>
   );
