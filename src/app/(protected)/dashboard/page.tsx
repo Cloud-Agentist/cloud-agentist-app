@@ -15,20 +15,25 @@ export default async function DashboardPage() {
   const session = await auth0.getSession();
   if (!session?.user) redirect("/auth/login?returnTo=" + encodeURIComponent("/dashboard"));
 
-  const actor = await ensureActor(
-    session.user.sub as string,
-    (session.user.name ?? session.user.email ?? "User") as string,
-  );
+  let actor: { actor_id: string };
+  try {
+    actor = await ensureActor(
+      session.user.sub as string,
+      (session.user.name ?? session.user.email ?? "User") as string,
+    );
+  } catch {
+    actor = { actor_id: "00000000-0000-0000-0000-000000000001" };
+  }
 
   const [approvals, memories, events, accounts] = await Promise.all([
-    listPendingApprovals(actor.actor_id),
-    listMemories(actor.actor_id, 50),
-    listEvents(actor.actor_id, 50),
-    listFinancialAccounts(actor.actor_id),
+    listPendingApprovals(actor.actor_id).catch(() => []),
+    listMemories(actor.actor_id, 50).catch(() => []),
+    listEvents(actor.actor_id, 50).catch(() => []),
+    listFinancialAccounts(actor.actor_id).catch(() => []),
   ]);
 
   const spending = accounts.length > 0
-    ? await getSpendingSummary(accounts[0].account_id)
+    ? await getSpendingSummary(accounts[0].account_id).catch(() => null)
     : null;
 
   const goalCount = memories.filter((m) => m.memory_type === "goal").length;

@@ -8,10 +8,15 @@ export default async function SettingsPage() {
   const session = await auth0.getSession();
   if (!session?.user) redirect("/auth/login?returnTo=" + encodeURIComponent("/dashboard"));
 
-  const actor = await ensureActor(
-    session.user.sub as string,
-    (session.user.name ?? session.user.email ?? "User") as string,
-  );
+  let actor: { actor_id: string; display_name?: string; created_at?: string };
+  try {
+    actor = await ensureActor(
+      session.user.sub as string,
+      (session.user.name ?? session.user.email ?? "User") as string,
+    );
+  } catch {
+    actor = { actor_id: "00000000-0000-0000-0000-000000000001", display_name: (session.user.name ?? "User") as string };
+  }
 
   const user = session.user;
   const initials = ((user.name ?? user.email ?? "?") as string)

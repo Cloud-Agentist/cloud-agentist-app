@@ -7,12 +7,17 @@ export default async function MemoriesPage() {
   const session = await auth0.getSession();
   if (!session?.user) redirect("/auth/login?returnTo=" + encodeURIComponent("/dashboard"));
 
-  const actor = await ensureActor(
-    session.user.sub as string,
-    (session.user.name ?? session.user.email ?? "User") as string,
-  );
+  let actor: { actor_id: string };
+  try {
+    actor = await ensureActor(
+      session.user.sub as string,
+      (session.user.name ?? session.user.email ?? "User") as string,
+    );
+  } catch {
+    actor = { actor_id: "00000000-0000-0000-0000-000000000001" };
+  }
 
-  const memories = await listMemories(actor.actor_id, 100);
+  const memories = await listMemories(actor.actor_id, 100).catch(() => [] as Awaited<ReturnType<typeof listMemories>>);
 
   // Group by type
   const grouped = {
