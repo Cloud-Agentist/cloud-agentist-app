@@ -7,19 +7,20 @@ import { getActionMeta } from "@/lib/actions";
 import { decide } from "../approvals/actions";
 
 interface Props {
+  actorId: string;
   approvals: ApprovalRequest[];
   approvalHistory: ApprovalRequest[];
   intents: ActorIntent[];
   hasRecentInteraction: boolean;
 }
 
-export default function InboxContent({ approvals: initialApprovals, approvalHistory, intents, hasRecentInteraction }: Props) {
+export default function InboxContent({ actorId, approvals: initialApprovals, approvalHistory, intents, hasRecentInteraction }: Props) {
   const [approvals, setApprovals] = useState(initialApprovals);
   const [isPending, startTransition] = useTransition();
 
   function handleDecide(approvalId: string, decision: "approved" | "denied") {
     startTransition(async () => {
-      const result = await decide(approvalId, decision);
+      const result = await decide(approvalId, decision, actorId);
       if (result.ok) {
         setApprovals((prev) => prev.filter((a) => a.approval_id !== approvalId));
       }

@@ -34,6 +34,7 @@ export default async function InboxPage() {
 
   return (
     <InboxContent
+      actorId={actor.actor_id}
       approvals={approvals}
       approvalHistory={approvalHistory}
       intents={intents}

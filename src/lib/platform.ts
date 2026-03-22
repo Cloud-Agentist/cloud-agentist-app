@@ -105,11 +105,12 @@ export async function listRecentApprovals(actorId: string, limit = 10): Promise<
 export async function decideApproval(
   approvalId: string,
   decision: "approved" | "denied",
+  decidedBy?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${APPROVAL_SERVICE}/approvals/${approvalId}/decide`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ decision }),
+    body: JSON.stringify({ decision, decidedBy: decidedBy ?? "human-user" }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
