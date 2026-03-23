@@ -72,11 +72,11 @@ export default function Nav({ userName, userPicture }: NavProps) {
         <div className="flex items-center gap-1">
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-lg font-bold text-indigo-400 hover:text-indigo-300 mr-2 sm:mr-4 transition-colors"
+            className="flex items-center gap-2 text-lg font-bold mr-2 sm:mr-4 transition-colors"
           >
             <img src="/icon.svg" alt="" className="h-7 w-auto" />
-            <span className="hidden sm:inline">Cloud Agentist</span>
-            <span className="sm:hidden">CA</span>
+            <span className="hidden sm:inline"><span className="text-slate-100">Cloud </span><span className="text-indigo-400">Agentist</span></span>
+            <span className="sm:hidden text-indigo-400">CA</span>
           </Link>
           {/* Desktop nav items */}
           <div className="hidden sm:flex items-center gap-1">
