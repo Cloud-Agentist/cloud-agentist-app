@@ -3,6 +3,9 @@ import { auth0 } from "@/lib/auth0";
 import { ensureActor } from "@/lib/platform";
 import Link from "next/link";
 import DataDeleteItem from "./DataDeleteItem";
+import GoogleCalendarConnect from "./GoogleCalendarConnect";
+
+const AGENDAMERGE_URL = process.env.AGENDAMERGE_URL || "http://localhost:8083";
 
 export default async function SettingsPage() {
   const session = await auth0.getSession();
@@ -75,6 +78,42 @@ export default async function SettingsPage() {
           <SettingsLink href="/capabilities" label="Capabilities" desc="See what actions your AI can perform" />
           <SettingsLink href="/inbox" label="Inbox" desc="Pending approvals and queued actions" />
         </div>
+      </section>
+
+      {/* Agent Interactions */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">Agent Interactions</h2>
+        <div className="space-y-2">
+          <SettingsLink href="/channels" label="Agent Channels" desc="View interactions between your agent and others" />
+          <div className="p-3 rounded-lg">
+            <div className="text-sm font-medium text-slate-200">Interaction Permissions</div>
+            <div className="text-xs text-slate-500 mt-1">Control what other people's agents can do with yours</div>
+            <div className="mt-3 space-y-2 text-xs text-slate-400">
+              <div className="flex items-center justify-between">
+                <span>Accept scheduling requests</span>
+                <span className="text-emerald-400">On</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Share calendar availability</span>
+                <span className="text-emerald-400">On</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Share wishlist (per-person)</span>
+                <span className="text-slate-500">Off</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Accept collaboration requests</span>
+                <span className="text-slate-500">Off</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Integrations */}
+      <section className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">Integrations</h2>
+        <GoogleCalendarConnect actorId={actor.actor_id} agendamergeUrl={AGENDAMERGE_URL} />
       </section>
 
       {/* Data & Privacy */}

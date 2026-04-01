@@ -264,7 +264,10 @@ export default function ChatShell({ actorId, userName, initialHistory = [], init
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            {msg.role === "assistant" && (
+              <img src="/brand/avatar-dark-64.png" alt="" className="h-8 w-8 rounded-full shrink-0 mt-1" />
+            )}
             <div
               className={`max-w-xl rounded-2xl px-4 py-3 text-sm ${
                 msg.role === "user"
