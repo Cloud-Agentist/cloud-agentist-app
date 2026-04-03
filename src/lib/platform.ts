@@ -337,6 +337,7 @@ export async function getWorkflowStatus(
 // ── Direct gateway call (fallback, bypasses governance) ──────────────────────
 
 const COGNITION_GATEWAY = process.env.COGNITION_GATEWAY_URL ?? "http://localhost:3000";
+const PERCEPTION_BUS = process.env.PERCEPTION_BUS_URL ?? "http://localhost:3022";
 
 export interface ReasoningResult {
   text: string;
@@ -346,22 +347,50 @@ export interface ReasoningResult {
 }
 
 /**
+ * Fetch perception frame from perception-bus (non-fatal if unavailable).
+ */
+async function fetchPerceptionFrame(actorId: string): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${PERCEPTION_BUS}/perceive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actorId }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { frame?: Record<string, unknown> };
+    return data.frame ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Direct call to cognition-gateway, bypassing Temporal governance.
  * Used as fallback when actor-runtime is unavailable.
+ * Includes perception context if perception-bus is available.
  */
 export async function reasonDirect(
   actorId: string,
   input: string,
   sessionId?: string,
 ): Promise<InteractionResult> {
+  // Fetch perception context (non-fatal)
+  const perceptionFrame = await fetchPerceptionFrame(actorId);
+
+  const body: Record<string, unknown> = { actorId, input, mode: "ask", sessionId };
+  if (perceptionFrame) {
+    body.perceptionFrame = perceptionFrame;
+  }
+
   const res = await fetch(`${COGNITION_GATEWAY}/v1/reasoning`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ actorId, input, mode: "ask", sessionId }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Gateway error ${res.status}: ${body}`);
+    const errBody = await res.text().catch(() => "");
+    throw new Error(`Gateway error ${res.status}: ${errBody}`);
   }
   const data = (await res.json()) as ReasoningResult;
   return {
