@@ -366,9 +366,62 @@ async function fetchPerceptionFrame(actorId: string): Promise<Record<string, unk
 }
 
 /**
+ * Log a direct interaction to event-store and memory-fabric (non-fatal).
+ * Mirrors what the Temporal workflow does in appendEvent + storeInteractionMemory.
+ */
+async function logDirectInteraction(
+  actorId: string,
+  input: string,
+  responseText: string,
+  sessionId?: string,
+): Promise<string> {
+  let eventId = "";
+
+  // Log to event-store
+  try {
+    const res = await fetch(`${EVENT_STORE}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actorId,
+        eventType: "interaction",
+        payload: { input, response: responseText, sessionId, path: "direct" },
+      }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { eventId?: string };
+      eventId = data.eventId ?? "";
+    }
+  } catch {
+    // Non-fatal — don't break the chat if logging fails
+  }
+
+  // Store as memory in memory-fabric
+  try {
+    await fetch(`${MEMORY_FABRIC}/memories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actorId,
+        memoryType: "experience",
+        content: { text: `User said: "${input}" — I responded: "${responseText.slice(0, 500)}"` },
+        confidence: 0.8,
+      }),
+      signal: AbortSignal.timeout(3000),
+    });
+  } catch {
+    // Non-fatal
+  }
+
+  return eventId;
+}
+
+/**
  * Direct call to cognition-gateway, bypassing Temporal governance.
  * Used as fallback when actor-runtime is unavailable.
  * Includes perception context if perception-bus is available.
+ * Logs the interaction to event-store + memory-fabric.
  */
 export async function reasonDirect(
   actorId: string,
@@ -393,9 +446,13 @@ export async function reasonDirect(
     throw new Error(`Gateway error ${res.status}: ${errBody}`);
   }
   const data = (await res.json()) as ReasoningResult;
+
+  // Log the interaction (non-fatal — don't block the response)
+  const eventId = await logDirectInteraction(actorId, input, data.text, sessionId);
+
   return {
     text: data.text,
-    eventId: "",
+    eventId,
     proposedIntents: data.proposedIntents,
   };
 }
