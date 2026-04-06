@@ -195,6 +195,19 @@ function TypingIndicator() {
   );
 }
 
+// ── Panel inference from intents ─────────────────────────────────────────────
+
+function inferPanelFromIntents(intents?: ProposedIntent[]): VisualPanel | null {
+  if (!intents || intents.length === 0) return null;
+  for (const intent of intents) {
+    const action = intent.action.toLowerCase();
+    if (action.startsWith("wishlist.")) return { panelType: "wishlist", title: "Wishlist" };
+    if (action.startsWith("calendar.") || action.startsWith("schedule.")) return { panelType: "calendar", title: "Calendar" };
+    if (action.startsWith("finance.") || action.startsWith("budget.") || action.startsWith("payment.")) return { panelType: "financial", title: "Finances" };
+  }
+  return null;
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function ChatShell({ actorId, userName, initialHistory = [], initialPrompt }: ChatShellProps) {
@@ -246,9 +259,10 @@ export default function ChatShell({ actorId, userName, initialHistory = [], init
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      // Update active panel if the response includes a visual hint
-      if (result.visual && result.visual.panelType !== "none") {
-        setActivePanel(result.visual);
+      // Update active panel — from explicit visual field OR inferred from proposed intents
+      const panel = result.visual ?? inferPanelFromIntents(result.proposedIntents);
+      if (panel && panel.panelType !== "none") {
+        setActivePanel(panel);
       }
     });
   }
